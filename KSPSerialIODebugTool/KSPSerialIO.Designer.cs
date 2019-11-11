@@ -101,6 +101,12 @@
             this.textBoxProgradePitch = new System.Windows.Forms.TextBox();
             this.buttonResetDefaults = new System.Windows.Forms.Button();
             this.groupBox3 = new System.Windows.Forms.GroupBox();
+            this.textBoxOxidizerS = new System.Windows.Forms.TextBox();
+            this.textBoxOxidizerTotS = new System.Windows.Forms.TextBox();
+            this.TextBoxLiquidFuelS = new System.Windows.Forms.TextBox();
+            this.TextBoxLiquidFuelTotS = new System.Windows.Forms.TextBox();
+            this.label68 = new System.Windows.Forms.Label();
+            this.label18 = new System.Windows.Forms.Label();
             this.label42 = new System.Windows.Forms.Label();
             this.label41 = new System.Windows.Forms.Label();
             this.label47 = new System.Windows.Forms.Label();
@@ -223,12 +229,8 @@
             this.checkBoxShowStatusMessages = new System.Windows.Forms.CheckBox();
             this.buttonShowAboutForm = new System.Windows.Forms.Button();
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
-            this.label18 = new System.Windows.Forms.Label();
-            this.label68 = new System.Windows.Forms.Label();
-            this.TextBoxLiquidFuelTotS = new System.Windows.Forms.TextBox();
-            this.TextBoxLiquidFuelS = new System.Windows.Forms.TextBox();
-            this.textBoxOxidizerTotS = new System.Windows.Forms.TextBox();
-            this.textBoxOxidizerS = new System.Windows.Forms.TextBox();
+            this.label69 = new System.Windows.Forms.Label();
+            this.linkLabelFork = new System.Windows.Forms.LinkLabel();
             this.groupBox1.SuspendLayout();
             this.groupBox2.SuspendLayout();
             this.groupBox6.SuspendLayout();
@@ -1104,6 +1106,60 @@
             this.groupBox3.TabIndex = 4;
             this.groupBox3.TabStop = false;
             this.groupBox3.Text = "Resources";
+            // 
+            // textBoxOxidizerS
+            // 
+            this.textBoxOxidizerS.DataBindings.Add(new System.Windows.Forms.Binding("Text", global::KSPSerialIODebugTool.Properties.Settings.Default, "OxidizerS", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.textBoxOxidizerS.Location = new System.Drawing.Point(114, 115);
+            this.textBoxOxidizerS.Name = "textBoxOxidizerS";
+            this.textBoxOxidizerS.Size = new System.Drawing.Size(55, 20);
+            this.textBoxOxidizerS.TabIndex = 7;
+            this.textBoxOxidizerS.Text = global::KSPSerialIODebugTool.Properties.Settings.Default.OxidizerS;
+            // 
+            // textBoxOxidizerTotS
+            // 
+            this.textBoxOxidizerTotS.DataBindings.Add(new System.Windows.Forms.Binding("Text", global::KSPSerialIODebugTool.Properties.Settings.Default, "OxidizerTotS", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.textBoxOxidizerTotS.Location = new System.Drawing.Point(114, 87);
+            this.textBoxOxidizerTotS.Name = "textBoxOxidizerTotS";
+            this.textBoxOxidizerTotS.Size = new System.Drawing.Size(55, 20);
+            this.textBoxOxidizerTotS.TabIndex = 6;
+            this.textBoxOxidizerTotS.Text = global::KSPSerialIODebugTool.Properties.Settings.Default.OxidizerTotS;
+            // 
+            // TextBoxLiquidFuelS
+            // 
+            this.TextBoxLiquidFuelS.DataBindings.Add(new System.Windows.Forms.Binding("Text", global::KSPSerialIODebugTool.Properties.Settings.Default, "LiquidFuelS", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.TextBoxLiquidFuelS.Location = new System.Drawing.Point(53, 115);
+            this.TextBoxLiquidFuelS.Name = "TextBoxLiquidFuelS";
+            this.TextBoxLiquidFuelS.Size = new System.Drawing.Size(55, 20);
+            this.TextBoxLiquidFuelS.TabIndex = 5;
+            this.TextBoxLiquidFuelS.Text = global::KSPSerialIODebugTool.Properties.Settings.Default.LiquidFuelS;
+            // 
+            // TextBoxLiquidFuelTotS
+            // 
+            this.TextBoxLiquidFuelTotS.DataBindings.Add(new System.Windows.Forms.Binding("Text", global::KSPSerialIODebugTool.Properties.Settings.Default, "LiquidFuelTotS", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.TextBoxLiquidFuelTotS.Location = new System.Drawing.Point(53, 87);
+            this.TextBoxLiquidFuelTotS.Name = "TextBoxLiquidFuelTotS";
+            this.TextBoxLiquidFuelTotS.Size = new System.Drawing.Size(55, 20);
+            this.TextBoxLiquidFuelTotS.TabIndex = 4;
+            this.TextBoxLiquidFuelTotS.Text = global::KSPSerialIODebugTool.Properties.Settings.Default.LiquidFuelTotS;
+            // 
+            // label68
+            // 
+            this.label68.AutoSize = true;
+            this.label68.Location = new System.Drawing.Point(6, 118);
+            this.label68.Name = "label68";
+            this.label68.Size = new System.Drawing.Size(42, 13);
+            this.label68.TabIndex = 3;
+            this.label68.Text = "Cur. St.";
+            // 
+            // label18
+            // 
+            this.label18.AutoSize = true;
+            this.label18.Location = new System.Drawing.Point(6, 90);
+            this.label18.Name = "label18";
+            this.label18.Size = new System.Drawing.Size(42, 13);
+            this.label18.TabIndex = 2;
+            this.label18.Text = "Tot. St.";
             // 
             // label42
             // 
@@ -2119,14 +2175,14 @@
             this.label61.AutoSize = true;
             this.label61.Location = new System.Drawing.Point(195, 52);
             this.label61.Name = "label61";
-            this.label61.Size = new System.Drawing.Size(72, 13);
+            this.label61.Size = new System.Drawing.Size(81, 13);
             this.label61.TabIndex = 7;
-            this.label61.Text = "Version: 1.0.0";
+            this.label61.Text = "Version: f0.19.1";
             // 
             // linkLabelKSPSerialIOThread
             // 
             this.linkLabelKSPSerialIOThread.AutoSize = true;
-            this.linkLabelKSPSerialIOThread.Location = new System.Drawing.Point(166, 512);
+            this.linkLabelKSPSerialIOThread.Location = new System.Drawing.Point(183, 787);
             this.linkLabelKSPSerialIOThread.Name = "linkLabelKSPSerialIOThread";
             this.linkLabelKSPSerialIOThread.Size = new System.Drawing.Size(30, 13);
             this.linkLabelKSPSerialIOThread.TabIndex = 8;
@@ -2137,7 +2193,7 @@
             // label62
             // 
             this.label62.AutoSize = true;
-            this.label62.Location = new System.Drawing.Point(9, 512);
+            this.label62.Location = new System.Drawing.Point(26, 787);
             this.label62.Name = "label62";
             this.label62.Size = new System.Drawing.Size(151, 13);
             this.label62.TabIndex = 9;
@@ -2146,7 +2202,7 @@
             // label63
             // 
             this.label63.AutoSize = true;
-            this.label63.Location = new System.Drawing.Point(12, 453);
+            this.label63.Location = new System.Drawing.Point(26, 730);
             this.label63.Name = "label63";
             this.label63.Size = new System.Drawing.Size(341, 13);
             this.label63.TabIndex = 10;
@@ -2155,7 +2211,7 @@
             // linkLabelKSPSerialIODebugToolRepo
             // 
             this.linkLabelKSPSerialIODebugToolRepo.AutoSize = true;
-            this.linkLabelKSPSerialIODebugToolRepo.Location = new System.Drawing.Point(356, 453);
+            this.linkLabelKSPSerialIODebugToolRepo.Location = new System.Drawing.Point(370, 730);
             this.linkLabelKSPSerialIODebugToolRepo.Name = "linkLabelKSPSerialIODebugToolRepo";
             this.linkLabelKSPSerialIODebugToolRepo.Size = new System.Drawing.Size(30, 13);
             this.linkLabelKSPSerialIODebugToolRepo.TabIndex = 11;
@@ -2193,7 +2249,7 @@
             // label67
             // 
             this.label67.AutoSize = true;
-            this.label67.Location = new System.Drawing.Point(12, 479);
+            this.label67.Location = new System.Drawing.Point(26, 756);
             this.label67.Name = "label67";
             this.label67.Size = new System.Drawing.Size(210, 13);
             this.label67.TabIndex = 10;
@@ -2202,7 +2258,7 @@
             // linkLabelKSPSerialIODebugToolThread
             // 
             this.linkLabelKSPSerialIODebugToolThread.AutoSize = true;
-            this.linkLabelKSPSerialIODebugToolThread.Location = new System.Drawing.Point(228, 479);
+            this.linkLabelKSPSerialIODebugToolThread.Location = new System.Drawing.Point(242, 756);
             this.linkLabelKSPSerialIODebugToolThread.Name = "linkLabelKSPSerialIODebugToolThread";
             this.linkLabelKSPSerialIODebugToolThread.Size = new System.Drawing.Size(30, 13);
             this.linkLabelKSPSerialIODebugToolThread.TabIndex = 11;
@@ -2258,7 +2314,7 @@
             // 
             // buttonShowAboutForm
             // 
-            this.buttonShowAboutForm.Location = new System.Drawing.Point(492, 496);
+            this.buttonShowAboutForm.Location = new System.Drawing.Point(467, 730);
             this.buttonShowAboutForm.Name = "buttonShowAboutForm";
             this.buttonShowAboutForm.Size = new System.Drawing.Size(93, 43);
             this.buttonShowAboutForm.TabIndex = 16;
@@ -2276,70 +2332,33 @@
             this.pictureBox1.TabIndex = 5;
             this.pictureBox1.TabStop = false;
             // 
-            // label18
+            // label69
             // 
-            this.label18.AutoSize = true;
-            this.label18.Location = new System.Drawing.Point(6, 90);
-            this.label18.Name = "label18";
-            this.label18.Size = new System.Drawing.Size(42, 13);
-            this.label18.TabIndex = 2;
-            this.label18.Text = "Tot. St.";
+            this.label69.AutoSize = true;
+            this.label69.Location = new System.Drawing.Point(26, 653);
+            this.label69.Name = "label69";
+            this.label69.Size = new System.Drawing.Size(157, 13);
+            this.label69.TabIndex = 17;
+            this.label69.Text = "This fork is available on GitHub ";
             // 
-            // label68
+            // linkLabelFork
             // 
-            this.label68.AutoSize = true;
-            this.label68.Location = new System.Drawing.Point(6, 118);
-            this.label68.Name = "label68";
-            this.label68.Size = new System.Drawing.Size(42, 13);
-            this.label68.TabIndex = 3;
-            this.label68.Text = "Cur. St.";
-            // 
-            // TextBoxLiquidFuelTotS
-            // 
-            this.TextBoxLiquidFuelTotS.DataBindings.Add(new System.Windows.Forms.Binding("Text", global::KSPSerialIODebugTool.Properties.Settings.Default, "LiquidFuelTotS", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.TextBoxLiquidFuelTotS.Location = new System.Drawing.Point(53, 87);
-            this.TextBoxLiquidFuelTotS.Name = "TextBoxLiquidFuelTotS";
-            this.TextBoxLiquidFuelTotS.Size = new System.Drawing.Size(55, 20);
-            this.TextBoxLiquidFuelTotS.TabIndex = 4;
-            this.TextBoxLiquidFuelTotS.Text = "0";
-            this.TextBoxLiquidFuelTotS.Text = global::KSPSerialIODebugTool.Properties.Settings.Default.LiquidFuelTotS;
-
-            // 
-            // TextBoxLiquidFuelS
-            // 
-            this.TextBoxLiquidFuelS.DataBindings.Add(new System.Windows.Forms.Binding("Text", global::KSPSerialIODebugTool.Properties.Settings.Default, "LiquidFuelS", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.TextBoxLiquidFuelS.Location = new System.Drawing.Point(53, 115);
-            this.TextBoxLiquidFuelS.Name = "TextBoxLiquidFuelS";
-            this.TextBoxLiquidFuelS.Size = new System.Drawing.Size(55, 20);
-            this.TextBoxLiquidFuelS.TabIndex = 5;
-            this.TextBoxLiquidFuelS.Text = "0";
-            this.TextBoxLiquidFuelS.Text = global::KSPSerialIODebugTool.Properties.Settings.Default.LiquidFuelS;
-            // 
-            // textBoxOxidizerTotS
-            // 
-            this.textBoxOxidizerTotS.DataBindings.Add(new System.Windows.Forms.Binding("Text", global::KSPSerialIODebugTool.Properties.Settings.Default, "OxidizerTotS", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.textBoxOxidizerTotS.Location = new System.Drawing.Point(114, 87);
-            this.textBoxOxidizerTotS.Name = "textBoxOxidizerTotS";
-            this.textBoxOxidizerTotS.Size = new System.Drawing.Size(55, 20);
-            this.textBoxOxidizerTotS.TabIndex = 6;
-            this.textBoxOxidizerTotS.Text = "0";
-            this.textBoxOxidizerTotS.Text = global::KSPSerialIODebugTool.Properties.Settings.Default.OxidizerTotS;
-            // 
-            // textBoxOxidizerS
-            // 
-            this.textBoxOxidizerS.DataBindings.Add(new System.Windows.Forms.Binding("Text", global::KSPSerialIODebugTool.Properties.Settings.Default, "OxidizerS", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.textBoxOxidizerS.Location = new System.Drawing.Point(114, 115);
-            this.textBoxOxidizerS.Name = "textBoxOxidizerS";
-            this.textBoxOxidizerS.Size = new System.Drawing.Size(55, 20);
-            this.textBoxOxidizerS.TabIndex = 7;
-            this.textBoxOxidizerS.Text = "0";
-            this.textBoxOxidizerS.Text = global::KSPSerialIODebugTool.Properties.Settings.Default.OxidizerS;
+            this.linkLabelFork.AutoSize = true;
+            this.linkLabelFork.Location = new System.Drawing.Point(183, 653);
+            this.linkLabelFork.Name = "linkLabelFork";
+            this.linkLabelFork.Size = new System.Drawing.Size(30, 13);
+            this.linkLabelFork.TabIndex = 18;
+            this.linkLabelFork.TabStop = true;
+            this.linkLabelFork.Text = "Here";
+            this.linkLabelFork.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.linkLabelFork_LinkClicked);
             // 
             // KSPSerialIO
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1184, 874);
+            this.Controls.Add(this.linkLabelFork);
+            this.Controls.Add(this.label69);
             this.Controls.Add(this.buttonShowAboutForm);
             this.Controls.Add(this.checkBoxShowStatusMessages);
             this.Controls.Add(this.buttonStop);
@@ -2588,6 +2607,8 @@
         private System.Windows.Forms.TextBox TextBoxLiquidFuelTotS;
         private System.Windows.Forms.Label label68;
         private System.Windows.Forms.Label label18;
+        private System.Windows.Forms.Label label69;
+        private System.Windows.Forms.LinkLabel linkLabelFork;
     }
 }
 

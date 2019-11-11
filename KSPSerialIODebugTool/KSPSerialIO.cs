@@ -500,6 +500,10 @@ namespace KSPSerialIODebugTool
             Settings.Default.Reload();
         }
 
+        private void linkLabelFork_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        {
+            System.Diagnostics.Process.Start("https://github.com/Jimbo-Farrar/KSPSerialIODebugTool");
+        }
         private void linkLabelKSPSerialIODebugToolRepo_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
         {
             System.Diagnostics.Process.Start("https://github.com/bolwire/KSPSerialIODebugTool");
@@ -645,5 +649,6 @@ namespace KSPSerialIODebugTool
                 NavballModeNumber = 3;
             }
         }
+
     }
 }
