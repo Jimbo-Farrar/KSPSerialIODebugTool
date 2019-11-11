@@ -9,4 +9,4 @@ https://github.com/bolwire/KSPSerialIODebugTool
 
 The VesselData packet as been updated to match KSPSerialIO plugin 0.19.1
 
-Added controls for SAS and navball mode
+Added controls for SAS, navball mode, liquid fuel and oxidizer total and current stage and "vectors"
