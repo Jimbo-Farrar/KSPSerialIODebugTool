@@ -142,6 +142,16 @@ Thanks again to zitronen and the other folks who have put so many
 countless hours into developing mods and other plugins for our
 enjoyment.
 
-~KingLuxor</value>
+~KingLuxor
+
+--------------------------------------------------------------------------------------
+
+This is a fork from the work of KingLuxor
+
+The VesselData packet as been updated to match KSPSerialIO plugin 0.19.1
+
+Added controls for SAS and navball mode
+
+Jimbofarrar Nov. 2019</value>
   </data>
 </root>
