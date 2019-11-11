@@ -3,7 +3,7 @@
   <Profiles />
   <Settings>
     <Setting Name="DefaultPort" Type="System.String" Scope="User">
-      <Value Profile="(Default)">COM3</Value>
+      <Value Profile="(Default)">COM15</Value>
     </Setting>
     <Setting Name="refresh" Type="System.Double" Scope="User">
       <Value Profile="(Default)">0.2</Value>
@@ -226,6 +226,39 @@
     </Setting>
     <Setting Name="CG10" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="ProgradePitch" Type="System.String" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="ProgradeHeading" Type="System.String" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="ManeuverPitch" Type="System.String" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="ManeuverHeading" Type="System.String" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="TargetPitch" Type="System.String" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="TargetHeading" Type="System.String" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="NormalHeading" Type="System.String" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="LiquidFuelTotS" Type="System.String" Scope="User">
+      <Value Profile="(Default)">1234</Value>
+    </Setting>
+    <Setting Name="LiquidFuelS" Type="System.String" Scope="User">
+      <Value Profile="(Default)">1234</Value>
+    </Setting>
+    <Setting Name="OxidizerTotS" Type="System.String" Scope="User">
+      <Value Profile="(Default)">2345</Value>
+    </Setting>
+    <Setting Name="OxidizerS" Type="System.String" Scope="User">
+      <Value Profile="(Default)">2345</Value>
     </Setting>
   </Settings>
 </SettingsFile>
