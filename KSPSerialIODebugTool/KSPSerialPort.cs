@@ -1,13 +1,12 @@
 ﻿using Microsoft.Win32;
 using System;
 using System.IO.Ports;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
 
 namespace KSPSerialIODebugTool
 {
-	public class KSPSerialPort
+    public class KSPSerialPort
 	{
 		private SettingsNStuff SettingsNStuff = new SettingsNStuff();
 		public SerialPort Port;
@@ -114,9 +113,9 @@ namespace KSPSerialIODebugTool
 
 			HPacket = new HandShakePacket();
 			HPacket.id = HSPid;
-			HPacket.M1 = 1;
-			HPacket.M2 = 2;
-			HPacket.M3 = 3;
+			HPacket.M1 = 3;
+			HPacket.M2 = 1;
+			HPacket.M3 = 4;
 
 			CPacket = new ControlPacket();
 

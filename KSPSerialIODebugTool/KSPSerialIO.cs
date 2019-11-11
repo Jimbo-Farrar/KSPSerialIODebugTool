@@ -64,9 +64,25 @@ namespace KSPSerialIODebugTool
 		public float IAS;           //50  Indicated Air Speed
 		public byte CurrentStage;   //51  Current stage number
 		public byte TotalStage;     //52  TotalNumber of stages
-	}
+        public float TargetDist;    //53  Distance to targeted vessel (m)
+        public float TargetV;       //54  Target vessel relative velocity
+        public byte NavballSASMode; //55  Combined byte for navball target mode and SAS mode
+        // First four bits indicate AutoPilot mode:
+        // 0 SAS is off  //1 = Regular Stability Assist //2 = Prograde
+        // 3 = RetroGrade //4 = Normal //5 = Antinormal //6 = Radial In
+        // 7 = Radial Out //8 = Target //9 = Anti-Target //10 = Maneuver node
+        // Last 4 bits set navball mode. (0=ignore,1=ORBIT,2=SURFACE,3=TARGET)
+        public short ProgradePitch;  //56 Pitch   Of the Prograde Vector;  int_16 ranging from (-0x8000(-360 degrees) to 0x7FFF(359.99ish degrees)); 
+        public short ProgradeHeading;//57 Heading Of the Prograde Vector;  see above for range   (Prograde vector depends on navball mode, eg Surface/Orbit/Target)
+        public short ManeuverPitch;  //58 Pitch   Of the Maneuver Vector;  see above for range;  (0 if no Maneuver node)
+        public short ManeuverHeading;//59 Heading Of the Maneuver Vector;  see above for range;  (0 if no Maneuver node)
+        public short TargetPitch;    //60 Pitch   Of the Target   Vector;  see above for range;  (0 if no Target)
+        public short TargetHeading;  //61 Heading Of the Target   Vector;  see above for range;  (0 if no Target)
+        public short NormalHeading;  //62 Heading Of the Prograde Vector;  see above for range;  (Pitch of the Heading Vector is always 0)
 
-	[StructLayout(LayoutKind.Sequential, Pack = 1)]
+    }
+
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
 	public struct HandShakePacket
 	{
 		public byte id;
@@ -82,8 +98,9 @@ namespace KSPSerialIODebugTool
 		public byte MainControls;                  //SAS RCS Lights Gear Brakes Precision Abort Stage 
 		public byte Mode;                          //0 = stage, 1 = docking, 2 = map
 		public ushort ControlGroup;                //control groups 1-10 in 2 bytes
-		public byte AdditionalControlByte1;        //other stuff
-		public byte AdditionalControlByte2;
+        public byte NavballSASMode;                //AutoPilot mode (See above for AutoPilot modes)(Ignored if the equal to zero or out of bounds (>10)) //Navball mode
+        public byte AdditionalControlByte1;        //other stuff
+//		public byte AdditionalControlByte2;
 		public short Pitch;                        //-1000 -> 1000
 		public short Roll;                         //-1000 -> 1000
 		public short Yaw;                          //-1000 -> 1000
@@ -147,403 +164,486 @@ namespace KSPSerialIODebugTool
 		Custom10,
 	};
 
-	#endregion
+    #endregion
 
-	public partial class KSPSerialIO : Form
-	{
-		//Do not inialize here
-		private StatusMessagesForm MessageForm;
-		private SettingsNStuff SettingsNStuff;
-		private KSPSerialPort KSPSerialPort;
+    public partial class KSPSerialIO : Form
+    {
+        //Do not inialize here
+        private StatusMessagesForm MessageForm;
+        private SettingsNStuff SettingsNStuff;
+        private KSPSerialPort KSPSerialPort;
 
-		public double refreshrate = 1.0f;
-
-
-		public KSPSerialIO()
-		{
-			InitializeComponent();
-		}
-
-		private void KSPSerialIO_Load(object sender, EventArgs e)
-		{
-			//These are initialized here so that the main form is loaded and ready
-			MessageForm = new StatusMessagesForm();
-			MessageForm.Show();
-
-			SettingsNStuff = new SettingsNStuff();
-			KSPSerialPort = new KSPSerialPort();
-			
-			//Are we ready now ?
-			Awake();
-		}
-
-		void Awake()
-		{
-			Debug.PostScreenMessage("IO awake");
-			if (!KSPSerialPort.DisplayFound)
-			{
-				//Take all the fun away
-				buttonStart.Enabled =
-					buttonStop.Enabled =
-						buttonUpdate.Enabled = buttonUpdateOnce.Enabled = buttonHandshake.Enabled = buttonHandshakeOnce.Enabled = false;
-
-				//Display bad news
-				MessageBox.Show(
-					@"OOPS! We didn't detect your controller/display. Please make sure it is connected and restart the application.",
-					@"Arduino not found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-			}
-
-			refreshrate = SettingsNStuff.refreshrate;
-		}
-
-		void Start()
-		{
-			if (KSPSerialPort.DisplayFound)
-			{
-				if (!KSPSerialPort.Port.IsOpen)
-				{
-					Debug.PostScreenMessage("Starting serial port " + KSPSerialPort.Port.PortName);
-
-					try
-					{
-						KSPSerialPort.Port.Open();
-						Thread.Sleep(SettingsNStuff.HandshakeDelay);
-					}
-					catch (Exception e)
-					{
-						Debug.PostScreenMessage("Error opening serial port " + KSPSerialPort.Port.PortName);
-						Debug.PostScreenMessage(e.Message);
-					}
-				}
-				else
-				{
-					Debug.PostScreenMessage("Using serial port " + KSPSerialPort.Port.PortName);
-
-					if (SettingsNStuff.HandshakeDisable == 1)
-						Debug.PostScreenMessage("Handshake disabled");
-				}
-
-				Thread.Sleep(200);
-			}
-			else
-			{
-				Debug.PostScreenMessage("No display found");
-			}
-
-			//If we opened the com port we need to enable/disable buttons
-			if (KSPSerialPort.Port.IsOpen)
-			{
-				buttonStart.Enabled = false;
-				buttonStop.Enabled =
-					buttonUpdate.Enabled = buttonUpdateOnce.Enabled = buttonHandshake.Enabled = buttonHandshakeOnce.Enabled = true;
-			}
-		}
-
-		private bool _updatingControls = false;
-		private void UpdateControls()
-		{
-			if (KSPSerialPort.Port.IsOpen)
-			{
-				_updatingControls = true;
-
-				#region outputs
-
-				KSPSerialPort.VData.AP = Convert.ToSingle(textBoxOrbitalApoapsis.Text);
-				KSPSerialPort.VData.PE = Convert.ToSingle(textBoxOrbitalPeriapsis.Text);
-				KSPSerialPort.VData.SemiMajorAxis = Convert.ToSingle(textBoxOrbitalSemiMajorAxis.Text);
-				KSPSerialPort.VData.SemiMinorAxis = Convert.ToSingle(textBoxOrbitalSemiMinorAxis.Text);
-				KSPSerialPort.VData.e = Convert.ToSingle(textBoxOrbitalEccentricity.Text);
-				KSPSerialPort.VData.inc = Convert.ToSingle(textBoxOrbitalInclination.Text);
-				KSPSerialPort.VData.TAp = Convert.ToInt32(textBoxOrbitalTimeToAP.Text);
-				KSPSerialPort.VData.TPe = Convert.ToInt32(textBoxOrbitalTimeToPE.Text);
-				KSPSerialPort.VData.TrueAnomaly = Convert.ToSingle(textBoxOrbitalTrueAnomaly.Text);
-				KSPSerialPort.VData.period = Convert.ToInt32(textBoxOrbitalPeriod.Text);
-				KSPSerialPort.VData.VVI = Convert.ToSingle(textBoxVerticalSpeed.Text);
-				KSPSerialPort.VData.G = Convert.ToSingle(textBoxGForce.Text);
-				KSPSerialPort.VData.Density = Convert.ToSingle(textBoxAtmDensity.Text);
-				KSPSerialPort.VData.RAlt = Convert.ToSingle(textBoxRadarAlt.Text);
-				KSPSerialPort.VData.Alt = Convert.ToSingle(textBoxAltitude.Text);
-				KSPSerialPort.VData.Vsurf = Convert.ToSingle(textBoxSurfaceSpeed.Text);
-				KSPSerialPort.VData.Lat = Convert.ToSingle(textBoxLatitude.Text);
-				KSPSerialPort.VData.Lon = Convert.ToSingle(textBoxLongitude.Text);
-				KSPSerialPort.VData.LiquidFuelTot = Convert.ToSingle(textBoxLiquidFuelMax.Text);
-				KSPSerialPort.VData.LiquidFuel = Convert.ToSingle(textBoxLiquidFuelCurrent.Text);
-				//I don't know what these are for
-				//KSPSerialPort.VData.LiquidFuelTotS = (float)ProspectForResourceMax("LiquidFuel", ActiveEngines);
-				//KSPSerialPort.VData.LiquidFuelS = (float)ProspectForResource("LiquidFuel", ActiveEngines);
-				KSPSerialPort.VData.OxidizerTot = Convert.ToSingle(textBoxOxidizerMax.Text);
-				KSPSerialPort.VData.Oxidizer = Convert.ToSingle(textBoxOxidizerCurrent.Text);
-				//These either
-				//KSPSerialPort.VData.OxidizerTotS = (float)ProspectForResourceMax("Oxidizer", ActiveEngines);
-				//KSPSerialPort.VData.OxidizerS = (float)ProspectForResource("Oxidizer", ActiveEngines);
-				KSPSerialPort.VData.EChargeTot = Convert.ToSingle(textBoxElectricalChargeMax.Text);
-				KSPSerialPort.VData.ECharge = Convert.ToSingle(textBoxElectricalChargeCurrent.Text);
-				KSPSerialPort.VData.MonoPropTot = Convert.ToSingle(textBoxMonoPropMax.Text);
-				KSPSerialPort.VData.MonoProp = Convert.ToSingle(textBoxMonoPropCurrent.Text);
-				KSPSerialPort.VData.IntakeAirTot = Convert.ToSingle(textBoxIntakeAirMax.Text);
-				KSPSerialPort.VData.IntakeAir = Convert.ToSingle(textBoxIntakeAirCurrent.Text);
-				KSPSerialPort.VData.SolidFuelTot = Convert.ToSingle(textBoxSolidFuelMax.Text);
-				KSPSerialPort.VData.SolidFuel = Convert.ToSingle(textBoxSolidFuelCurrent.Text);
-				KSPSerialPort.VData.XenonGasTot = Convert.ToSingle(textBoxXenonGasMax.Text);
-				KSPSerialPort.VData.XenonGas = Convert.ToSingle(textBoxXenonGasCurrent.Text);
-				KSPSerialPort.VData.MissionTime = Convert.ToUInt32(textBoxMissionTime.Text);
-				KSPSerialPort.VData.deltaTime = Convert.ToSingle(textBoxDeltaTime.Text);
-				KSPSerialPort.VData.VOrbit = Convert.ToSingle(textBoxOrbitalVelocity.Text);
-				KSPSerialPort.VData.Roll = Convert.ToSingle(textBoxRoll.Text);
-				KSPSerialPort.VData.Pitch = Convert.ToSingle(textBoxPitch.Text);
-				KSPSerialPort.VData.Heading = Convert.ToSingle(textBoxHeading.Text);
-				KSPSerialPort.ControlStatus((int) enumAG.RCS, checkBoxRCS.Checked);
-				KSPSerialPort.ControlStatus((int) enumAG.SAS, checkBoxSAS.Checked);
-				KSPSerialPort.ControlStatus((int) enumAG.Light, checkBoxLights.Checked);
-				KSPSerialPort.ControlStatus((int) enumAG.Gear, checkBoxGear.Checked);
-				KSPSerialPort.ControlStatus((int) enumAG.Brakes, checkBoxBrakes.Checked);
-				KSPSerialPort.ControlStatus((int) enumAG.Abort, checkBoxAbort.Checked);
-				KSPSerialPort.ControlStatus((int) enumAG.Custom01, checkBoxCG1.Checked);
-				KSPSerialPort.ControlStatus((int) enumAG.Custom02, checkBoxCG2.Checked);
-				KSPSerialPort.ControlStatus((int) enumAG.Custom03, checkBoxCG3.Checked);
-				KSPSerialPort.ControlStatus((int) enumAG.Custom04, checkBoxCG4.Checked);
-				KSPSerialPort.ControlStatus((int) enumAG.Custom05, checkBoxCG5.Checked);
-				KSPSerialPort.ControlStatus((int) enumAG.Custom06, checkBoxCG6.Checked);
-				KSPSerialPort.ControlStatus((int) enumAG.Custom07, checkBoxCG7.Checked);
-				KSPSerialPort.ControlStatus((int) enumAG.Custom08, checkBoxCG8.Checked);
-				KSPSerialPort.ControlStatus((int) enumAG.Custom09, checkBoxCG9.Checked);
-				KSPSerialPort.ControlStatus((int) enumAG.Custom10, checkBoxCG10.Checked);
-				KSPSerialPort.VData.SOINumber = Convert.ToByte(textBoxSOI.Text);
-				KSPSerialPort.VData.MaxOverHeat = Convert.ToByte(textBoxMaxOverheat.Text);
-				KSPSerialPort.VData.MachNumber = Convert.ToSingle(textBoxMachNumber.Text);
-				KSPSerialPort.VData.IAS = Convert.ToSingle(textBoxIndicatedAirSpeed.Text);
-				KSPSerialPort.VData.CurrentStage = Convert.ToByte(textBoxCurrentStage.Text);
-				KSPSerialPort.VData.TotalStage = Convert.ToByte(textBoxStageCount.Text);
-
-				KSPSerialPort.sendPacket(KSPSerialPort.VData);
-
-				#endregion
+        public double refreshrate = 1;
 
 
-				#region inputs
-				if (KSPSerialPort.ControlReceived)
-				{
-					checkBoxInputRCS.Checked = KSPSerialPort.VControls.RCS;
-					checkBoxInputSAS.Checked = KSPSerialPort.VControls.SAS;
-					checkBoxInputLights.Checked = KSPSerialPort.VControls.Lights;
-					checkBoxInputGear.Checked = KSPSerialPort.VControls.Gear;
-					checkBoxInputBrakes.Checked = KSPSerialPort.VControls.Brakes;
-					checkBoxInputPrecision.Checked = KSPSerialPort.VControls.Precision;
-					checkBoxInputAbort.Checked = KSPSerialPort.VControls.Abort;
-					checkBoxInputStage.Checked = KSPSerialPort.VControls.Stage;
+        public KSPSerialIO()
+        {
+            InitializeComponent();
+        }
 
-					//================ control groups
+        private void KSPSerialIO_Load(object sender, EventArgs e)
+        {
+            //These are initialized here so that the main form is loaded and ready
+            MessageForm = new StatusMessagesForm();
+            MessageForm.Show();
 
-					checkBoxInputCG1.Checked = KSPSerialPort.VControls.ControlGroup[1];
-					checkBoxInputCG2.Checked = KSPSerialPort.VControls.ControlGroup[2];
-					checkBoxInputCG3.Checked = KSPSerialPort.VControls.ControlGroup[3];
-					checkBoxInputCG4.Checked = KSPSerialPort.VControls.ControlGroup[4];
-					checkBoxInputCG5.Checked = KSPSerialPort.VControls.ControlGroup[5];
-					checkBoxInputCG6.Checked = KSPSerialPort.VControls.ControlGroup[6];
-					checkBoxInputCG7.Checked = KSPSerialPort.VControls.ControlGroup[7];
-					checkBoxInputCG8.Checked = KSPSerialPort.VControls.ControlGroup[8];
-					checkBoxInputCG9.Checked = KSPSerialPort.VControls.ControlGroup[9];
-					checkBoxInputCG10.Checked = KSPSerialPort.VControls.ControlGroup[10];
+            SettingsNStuff = new SettingsNStuff();
+            KSPSerialPort = new KSPSerialPort();
 
-					textBoxInputMode.Text = KSPSerialPort.VControls.Mode.ToString();
-					textBoxInputPitch.Text = KSPSerialPort.VControls.Pitch.ToString(CultureInfo.InvariantCulture);
-					textBoxInputRoll.Text = KSPSerialPort.VControls.Roll.ToString(CultureInfo.InvariantCulture);
-					textBoxInputYaw.Text = KSPSerialPort.VControls.Yaw.ToString(CultureInfo.InvariantCulture);
+            //Are we ready now ?
+            Awake();
+        }
 
-					textBoxInputTX.Text = KSPSerialPort.VControls.TX.ToString(CultureInfo.InvariantCulture);
-					textBoxInputTY.Text = KSPSerialPort.VControls.TY.ToString(CultureInfo.InvariantCulture);
-					textBoxInputTZ.Text = KSPSerialPort.VControls.TZ.ToString(CultureInfo.InvariantCulture);
+        void Awake()
+        {
+            Debug.PostScreenMessage("IO awake");
+            if (!KSPSerialPort.DisplayFound)
+            {
+                //Take all the fun away
+                buttonStart.Enabled =
+                    buttonStop.Enabled =
+                        buttonUpdate.Enabled = buttonUpdateOnce.Enabled = buttonHandshake.Enabled = buttonHandshakeOnce.Enabled = false;
 
-					textBoxInputWheelSteer.Text = KSPSerialPort.VControls.WheelSteer.ToString(CultureInfo.InvariantCulture);
-					textBoxInputThrottle.Text = KSPSerialPort.VControls.Throttle.ToString(CultureInfo.InvariantCulture);
-					textBoxInputWheelThrottle.Text = KSPSerialPort.VControls.WheelThrottle.ToString(CultureInfo.InvariantCulture);
+                //Display bad news
+                MessageBox.Show(
+                    @"OOPS! We didn't detect your controller/display. Please make sure it is connected and restart the application.",
+                    @"Arduino not found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+
+            refreshrate = SettingsNStuff.refreshrate;
+        }
+
+        void Start()
+        {
+            if (KSPSerialPort.DisplayFound)
+            {
+                if (!KSPSerialPort.Port.IsOpen)
+                {
+                    Debug.PostScreenMessage("Starting serial port " + KSPSerialPort.Port.PortName);
+
+                    try
+                    {
+                        KSPSerialPort.Port.Open();
+                        Thread.Sleep(SettingsNStuff.HandshakeDelay);
+                    }
+                    catch (Exception e)
+                    {
+                        Debug.PostScreenMessage("Error opening serial port " + KSPSerialPort.Port.PortName);
+                        Debug.PostScreenMessage(e.Message);
+                    }
+                }
+                else
+                {
+                    Debug.PostScreenMessage("Using serial port " + KSPSerialPort.Port.PortName);
+
+                    if (SettingsNStuff.HandshakeDisable == 1)
+                        Debug.PostScreenMessage("Handshake disabled");
+                }
+
+                Thread.Sleep(200);
+            }
+            else
+            {
+                Debug.PostScreenMessage("No display found");
+            }
+
+            //If we opened the com port we need to enable/disable buttons
+            if (KSPSerialPort.Port.IsOpen)
+            {
+                buttonStart.Enabled = false;
+                buttonStop.Enabled =
+                    buttonUpdate.Enabled = buttonUpdateOnce.Enabled = buttonHandshake.Enabled = buttonHandshakeOnce.Enabled = true;
+            }
+        }
+
+        private bool _updatingControls = false;
+        private byte SASModeNumber = 0;
+        private byte SASModeNumberTemp = 0;
+        private byte NavballModeNumber = 1;
+        private byte NavballModeNumberTemp = 0;
 
 
-					KSPSerialPort.ControlReceived = false;
-				} //end ControlReceived
-				#endregion
+        private void UpdateControls()
+        {
+            if (KSPSerialPort.Port.IsOpen)
+            {
+                _updatingControls = true;
 
-				_updatingControls = false;
+                #region outputs
 
-			}
+                KSPSerialPort.VData.AP = Convert.ToSingle(textBoxOrbitalApoapsis.Text);
+                KSPSerialPort.VData.PE = Convert.ToSingle(textBoxOrbitalPeriapsis.Text);
+                KSPSerialPort.VData.SemiMajorAxis = Convert.ToSingle(textBoxOrbitalSemiMajorAxis.Text);
+                KSPSerialPort.VData.SemiMinorAxis = Convert.ToSingle(textBoxOrbitalSemiMinorAxis.Text);
+                KSPSerialPort.VData.e = Convert.ToSingle(textBoxOrbitalEccentricity.Text);
+                KSPSerialPort.VData.inc = Convert.ToSingle(textBoxOrbitalInclination.Text);
+                KSPSerialPort.VData.TAp = Convert.ToInt32(textBoxOrbitalTimeToAP.Text);
+                KSPSerialPort.VData.TPe = Convert.ToInt32(textBoxOrbitalTimeToPE.Text);
+                KSPSerialPort.VData.TrueAnomaly = Convert.ToSingle(textBoxOrbitalTrueAnomaly.Text);
+                KSPSerialPort.VData.period = Convert.ToInt32(textBoxOrbitalPeriod.Text);
+                KSPSerialPort.VData.VVI = Convert.ToSingle(textBoxVerticalSpeed.Text);
+                KSPSerialPort.VData.G = Convert.ToSingle(textBoxGForce.Text);
+                KSPSerialPort.VData.Density = Convert.ToSingle(textBoxAtmDensity.Text);
+                KSPSerialPort.VData.RAlt = Convert.ToSingle(textBoxRadarAlt.Text);
+                KSPSerialPort.VData.Alt = Convert.ToSingle(textBoxAltitude.Text);
+                KSPSerialPort.VData.Vsurf = Convert.ToSingle(textBoxSurfaceSpeed.Text);
+                KSPSerialPort.VData.Lat = Convert.ToSingle(textBoxLatitude.Text);
+                KSPSerialPort.VData.Lon = Convert.ToSingle(textBoxLongitude.Text);
+                KSPSerialPort.VData.LiquidFuelTot = Convert.ToSingle(textBoxLiquidFuelMax.Text);
+                KSPSerialPort.VData.LiquidFuel = Convert.ToSingle(textBoxLiquidFuelCurrent.Text);
+                KSPSerialPort.VData.LiquidFuelTotS = Convert.ToSingle(TextBoxLiquidFuelTotS.Text);
+                KSPSerialPort.VData.LiquidFuelS = Convert.ToSingle(TextBoxLiquidFuelS.Text);
+                KSPSerialPort.VData.OxidizerTot = Convert.ToSingle(textBoxOxidizerMax.Text);
+                KSPSerialPort.VData.Oxidizer = Convert.ToSingle(textBoxOxidizerCurrent.Text);
+                KSPSerialPort.VData.OxidizerTotS = Convert.ToSingle(textBoxOxidizerTotS.Text);
+                KSPSerialPort.VData.OxidizerS = Convert.ToSingle(textBoxOxidizerS.Text);
+                KSPSerialPort.VData.ECharge = Convert.ToSingle(textBoxElectricalChargeCurrent.Text);
+                KSPSerialPort.VData.EChargeTot = Convert.ToSingle(textBoxElectricalChargeMax.Text);
+                KSPSerialPort.VData.MonoPropTot = Convert.ToSingle(textBoxMonoPropMax.Text);
+                KSPSerialPort.VData.MonoProp = Convert.ToSingle(textBoxMonoPropCurrent.Text);
+                KSPSerialPort.VData.IntakeAirTot = Convert.ToSingle(textBoxIntakeAirMax.Text);
+                KSPSerialPort.VData.IntakeAir = Convert.ToSingle(textBoxIntakeAirCurrent.Text);
+                KSPSerialPort.VData.SolidFuelTot = Convert.ToSingle(textBoxSolidFuelMax.Text);
+                KSPSerialPort.VData.SolidFuel = Convert.ToSingle(textBoxSolidFuelCurrent.Text);
+                KSPSerialPort.VData.XenonGasTot = Convert.ToSingle(textBoxXenonGasMax.Text);
+                KSPSerialPort.VData.XenonGas = Convert.ToSingle(textBoxXenonGasCurrent.Text);
+                KSPSerialPort.VData.MissionTime = Convert.ToUInt32(textBoxMissionTime.Text);
+                KSPSerialPort.VData.deltaTime = Convert.ToSingle(textBoxDeltaTime.Text);
+                KSPSerialPort.VData.VOrbit = Convert.ToSingle(textBoxOrbitalVelocity.Text);
+                KSPSerialPort.VData.Roll = Convert.ToSingle(textBoxRoll.Text);
+                KSPSerialPort.VData.Pitch = Convert.ToSingle(textBoxPitch.Text);
+                KSPSerialPort.VData.Heading = Convert.ToSingle(textBoxHeading.Text);
+                KSPSerialPort.ControlStatus((int)enumAG.RCS, checkBoxRCS.Checked);
+                KSPSerialPort.ControlStatus((int)enumAG.SAS, checkBoxSAS.Checked);
+                KSPSerialPort.ControlStatus((int)enumAG.Light, checkBoxLights.Checked);
+                KSPSerialPort.ControlStatus((int)enumAG.Gear, checkBoxGear.Checked);
+                KSPSerialPort.ControlStatus((int)enumAG.Brakes, checkBoxBrakes.Checked);
+                KSPSerialPort.ControlStatus((int)enumAG.Abort, checkBoxAbort.Checked);
+                KSPSerialPort.ControlStatus((int)enumAG.Custom01, checkBoxCG1.Checked);
+                KSPSerialPort.ControlStatus((int)enumAG.Custom02, checkBoxCG2.Checked);
+                KSPSerialPort.ControlStatus((int)enumAG.Custom03, checkBoxCG3.Checked);
+                KSPSerialPort.ControlStatus((int)enumAG.Custom04, checkBoxCG4.Checked);
+                KSPSerialPort.ControlStatus((int)enumAG.Custom05, checkBoxCG5.Checked);
+                KSPSerialPort.ControlStatus((int)enumAG.Custom06, checkBoxCG6.Checked);
+                KSPSerialPort.ControlStatus((int)enumAG.Custom07, checkBoxCG7.Checked);
+                KSPSerialPort.ControlStatus((int)enumAG.Custom08, checkBoxCG8.Checked);
+                KSPSerialPort.ControlStatus((int)enumAG.Custom09, checkBoxCG9.Checked);
+                KSPSerialPort.ControlStatus((int)enumAG.Custom10, checkBoxCG10.Checked);
+                KSPSerialPort.VData.SOINumber = Convert.ToByte(textBoxSOI.Text);
+                KSPSerialPort.VData.MaxOverHeat = Convert.ToByte(textBoxMaxOverheat.Text);
+                KSPSerialPort.VData.MachNumber = Convert.ToSingle(textBoxMachNumber.Text);
+                KSPSerialPort.VData.IAS = Convert.ToSingle(textBoxIndicatedAirSpeed.Text);
+                KSPSerialPort.VData.CurrentStage = Convert.ToByte(textBoxCurrentStage.Text);
+                KSPSerialPort.VData.TotalStage = Convert.ToByte(textBoxStageCount.Text);
+                KSPSerialPort.VData.ProgradePitch = Convert.ToInt16(textBoxProgradePitch.Text);
+                KSPSerialPort.VData.ProgradeHeading = Convert.ToInt16(textBoxProgradeHeading.Text);
+                KSPSerialPort.VData.ManeuverPitch = Convert.ToInt16(textBoxManeuverPitch.Text);
+                KSPSerialPort.VData.ManeuverHeading = Convert.ToInt16(textBoxManeuverHeading.Text);
+                KSPSerialPort.VData.TargetPitch = Convert.ToInt16(textBoxTargetPitch.Text);
+                KSPSerialPort.VData.TargetHeading = Convert.ToInt16(textBoxTargetHeading.Text);
+                KSPSerialPort.VData.NormalHeading = Convert.ToInt16(textBoxNormalHeading.Text);
+                SASModeNumberTemp = (byte)(SASModeNumber & 0b11110000);
+                SASModeNumber = (byte)(SASModeNumberTemp + SASModeNumber);
+                NavballModeNumberTemp = (byte)(SASModeNumber & 0b00001111);
+                SASModeNumber = (byte)(NavballModeNumberTemp + (NavballModeNumber * 16));
+                KSPSerialPort.VData.NavballSASMode = SASModeNumber;
+
+                KSPSerialPort.sendPacket(KSPSerialPort.VData);
+
+                #endregion
 
 
-		}
+                #region inputs
+                if (KSPSerialPort.ControlReceived)
+                {
+                    checkBoxInputRCS.Checked = KSPSerialPort.VControls.RCS;
+                    checkBoxInputSAS.Checked = KSPSerialPort.VControls.SAS;
+                    checkBoxInputLights.Checked = KSPSerialPort.VControls.Lights;
+                    checkBoxInputGear.Checked = KSPSerialPort.VControls.Gear;
+                    checkBoxInputBrakes.Checked = KSPSerialPort.VControls.Brakes;
+                    checkBoxInputPrecision.Checked = KSPSerialPort.VControls.Precision;
+                    checkBoxInputAbort.Checked = KSPSerialPort.VControls.Abort;
+                    checkBoxInputStage.Checked = KSPSerialPort.VControls.Stage;
 
-		void Stop()
-		{
-			if (KSPSerialPort.Port.IsOpen)
-			{
-				KSPSerialPort.Port.Close();
-				Debug.PostScreenMessage("Port closed");
-			}
+                    //================ control groups
 
-			buttonStart.Enabled = true;
-			buttonStop.Enabled =
-					buttonUpdate.Enabled = buttonUpdateOnce.Enabled = buttonHandshake.Enabled = buttonHandshakeOnce.Enabled = false;
+                    checkBoxInputCG1.Checked = KSPSerialPort.VControls.ControlGroup[1];
+                    checkBoxInputCG2.Checked = KSPSerialPort.VControls.ControlGroup[2];
+                    checkBoxInputCG3.Checked = KSPSerialPort.VControls.ControlGroup[3];
+                    checkBoxInputCG4.Checked = KSPSerialPort.VControls.ControlGroup[4];
+                    checkBoxInputCG5.Checked = KSPSerialPort.VControls.ControlGroup[5];
+                    checkBoxInputCG6.Checked = KSPSerialPort.VControls.ControlGroup[6];
+                    checkBoxInputCG7.Checked = KSPSerialPort.VControls.ControlGroup[7];
+                    checkBoxInputCG8.Checked = KSPSerialPort.VControls.ControlGroup[8];
+                    checkBoxInputCG9.Checked = KSPSerialPort.VControls.ControlGroup[9];
+                    checkBoxInputCG10.Checked = KSPSerialPort.VControls.ControlGroup[10];
 
-		}
+                    textBoxInputMode.Text = KSPSerialPort.VControls.Mode.ToString();
+                    textBoxInputPitch.Text = KSPSerialPort.VControls.Pitch.ToString(CultureInfo.InvariantCulture);
+                    textBoxInputRoll.Text = KSPSerialPort.VControls.Roll.ToString(CultureInfo.InvariantCulture);
+                    textBoxInputYaw.Text = KSPSerialPort.VControls.Yaw.ToString(CultureInfo.InvariantCulture);
 
-		private void buttonStart_Click(object sender, EventArgs e)
-		{
-			Start();
-		}
+                    textBoxInputTX.Text = KSPSerialPort.VControls.TX.ToString(CultureInfo.InvariantCulture);
+                    textBoxInputTY.Text = KSPSerialPort.VControls.TY.ToString(CultureInfo.InvariantCulture);
+                    textBoxInputTZ.Text = KSPSerialPort.VControls.TZ.ToString(CultureInfo.InvariantCulture);
 
-		private bool _autoUpdate;
-		private Timer _udTimer;
-		private void buttonUpdate_Click(object sender, EventArgs e)
-		{
-			if (!_autoUpdate)
-			{
-				_autoUpdate = true;
-				buttonUpdate.Text = @"Stop U/D";
+                    textBoxInputWheelSteer.Text = KSPSerialPort.VControls.WheelSteer.ToString(CultureInfo.InvariantCulture);
+                    textBoxInputThrottle.Text = KSPSerialPort.VControls.Throttle.ToString(CultureInfo.InvariantCulture);
+                    textBoxInputWheelThrottle.Text = KSPSerialPort.VControls.WheelThrottle.ToString(CultureInfo.InvariantCulture);
 
-				_udTimer = new Timer {Interval = 500};
-				_udTimer.Tick += (s, a) =>
-				{
-					UpdateControls();
-				};
-				_udTimer.Enabled = true;
-			}
 
-			else
-			{
-				_autoUpdate = false;
-				buttonUpdate.Text = @"Start U/D";
+                    KSPSerialPort.ControlReceived = false;
+                } //end ControlReceived
+                #endregion
 
-				_udTimer.Enabled = false;
-				_udTimer.Dispose();
-			}
-			
-		}
+                _updatingControls = false;
 
-		private bool _autoHandshake;
-		private Timer _hsTimer;
-		private void buttonHandshake_Click(object sender, EventArgs e)
-		{
-			if (!_autoHandshake)
-			{
-				_autoHandshake = true;
-				buttonHandshake.Text = @"Stop H/S";
+            }
 
-				_hsTimer = new Timer {Interval = 1500};
-				_hsTimer.Tick += (s, a) =>
-				{
-					KSPSerialPort.DoHandshake();
-				};
-				_hsTimer.Enabled = true;
-			}
 
-			else
-			{
-				_autoHandshake = false;
-				buttonHandshake.Text = @"Start H/S";
+        }
 
-				_hsTimer.Enabled = false;
-				_hsTimer.Dispose();
-			}
-		}
+        void Stop()
+        {
+            if (KSPSerialPort.Port.IsOpen)
+            {
+                KSPSerialPort.Port.Close();
+                Debug.PostScreenMessage("Port closed");
+            }
 
-		private void buttonSaveDefaults_Click(object sender, EventArgs e)
-		{
-			DialogResult dr = MessageBox.Show(@"Overwrite defaults ? You can reset defaults anytime.", @"Overwrite default",
-				MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            buttonStart.Enabled = true;
+            buttonStop.Enabled =
+                    buttonUpdate.Enabled = buttonUpdateOnce.Enabled = buttonHandshake.Enabled = buttonHandshakeOnce.Enabled = false;
 
-			if (dr != DialogResult.Yes)
-				return;
+        }
 
-			Settings.Default.Save();
-		}
+        private void buttonStart_Click(object sender, EventArgs e)
+        {
+            Start();
+        }
 
-		private void buttonResetDefaults_Click(object sender, EventArgs e)
-		{
-			DialogResult dr = MessageBox.Show(@"Reset defaults ? This action cannot be undone!", @"Reset to default",
-				MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+        private bool _autoUpdate;
+        private Timer _udTimer;
+        private void buttonUpdate_Click(object sender, EventArgs e)
+        {
+            if (!_autoUpdate)
+            {
+                _autoUpdate = true;
+                buttonUpdate.Text = @"Stop U/D";
 
-			if (dr != DialogResult.Yes)
-				return;
+                _udTimer = new Timer { Interval = (int)(refreshrate * 1000) };
+                _udTimer.Tick += (s, a) =>
+                {
+                    UpdateControls();
+                };
+                _udTimer.Enabled = true;
+            }
 
-			Settings.Default.Reset();
-			Settings.Default.Reload();
-		}
+            else
+            {
+                _autoUpdate = false;
+                buttonUpdate.Text = @"Start U/D";
 
-		private void linkLabelKSPSerialIODebugToolRepo_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
-		{
-			System.Diagnostics.Process.Start("https://github.com/bolwire/KSPSerialIODebugTool");
-		}
+                _udTimer.Enabled = false;
+                _udTimer.Dispose();
+            }
 
-		private void linkLabelKSPSerialIODebugToolThread_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
-		{
-			System.Diagnostics.Process.Start("http://forum.kerbalspaceprogram.com/index.php?/topic/139842-wiphardware-plugin-software-a-debugging-tool-for-kspserialio/");
-		}
+        }
 
-		private void linkLabelKSPSerialIOThread_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
-		{
-			System.Diagnostics.Process.Start("http://forum.kerbalspaceprogram.com/index.php?/topic/60281-hardware-plugin-arduino-based-physical-display-serial-port-io-tutorial-22-april/&page=1");
-		}
+        private bool _autoHandshake;
+        private Timer _hsTimer;
+        private void buttonHandshake_Click(object sender, EventArgs e)
+        {
+            if (!_autoHandshake)
+            {
+                _autoHandshake = true;
+                buttonHandshake.Text = @"Stop H/S";
 
-		private void buttonStop_Click(object sender, EventArgs e)
-		{
-			//Stop U/D & H/S if needed
-			if (_autoUpdate)
-				buttonUpdate_Click(sender, e);
+                _hsTimer = new Timer { Interval = SettingsNStuff.HandshakeDelay };
+                _hsTimer.Tick += (s, a) =>
+                {
+                    KSPSerialPort.DoHandshake();
+                };
+                _hsTimer.Enabled = true;
+            }
 
-			if (_autoHandshake)
-				buttonHandshake_Click(sender, e);
+            else
+            {
+                _autoHandshake = false;
+                buttonHandshake.Text = @"Start H/S";
 
-			//Let any current communications finish before closing the port
-			while (true)
-			{
-				if (_updatingControls || KSPSerialPort.Handshaking)
-					continue;
+                _hsTimer.Enabled = false;
+                _hsTimer.Dispose();
+            }
+        }
 
-				Stop();
-				break;
-			}
-		}
+        private void buttonSaveDefaults_Click(object sender, EventArgs e)
+        {
+            DialogResult dr = MessageBox.Show(@"Overwrite defaults ? You can reset defaults anytime.", @"Overwrite default",
+                MessageBoxButtons.YesNo, MessageBoxIcon.Question);
 
-		private void buttonUpdateOnce_Click(object sender, EventArgs e)
-		{
-			UpdateControls();
-		}
+            if (dr != DialogResult.Yes)
+                return;
 
-		private void buttonHandshakeOnce_Click(object sender, EventArgs e)
-		{
-			KSPSerialPort.DoHandshake();
-		}
+            Settings.Default.Save();
+        }
 
-		private void buttonShowAboutForm_Click(object sender, EventArgs e)
-		{
-			AboutForm aboutForm = new AboutForm();
-			aboutForm.ShowDialog();
-		}
+        private void buttonResetDefaults_Click(object sender, EventArgs e)
+        {
+            DialogResult dr = MessageBox.Show(@"Reset defaults ? This action cannot be undone!", @"Reset to default",
+                MessageBoxButtons.YesNo, MessageBoxIcon.Question);
 
-		private void checkBoxShowStatusMessages_Click(object sender, EventArgs e)
-		{
-			while (true)
-			{
-				if (checkBoxShowStatusMessages.Checked)
-				{
-					if (MessageForm.IsDisposed)
-					{
-						MessageForm = new StatusMessagesForm();
-						MessageForm.Show();
-					}
-					else
-					{
-						MessageForm.Close();
-						continue;
-					}
-				}
-				else
-				{
-					if (!MessageForm.IsDisposed)
-					{
-						MessageForm.Close();
-					}
-				}
-				break;
-			}
-		}
-	}
+            if (dr != DialogResult.Yes)
+                return;
+
+            Settings.Default.Reset();
+            Settings.Default.Reload();
+        }
+
+        private void linkLabelKSPSerialIODebugToolRepo_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        {
+            System.Diagnostics.Process.Start("https://github.com/bolwire/KSPSerialIODebugTool");
+        }
+
+        private void linkLabelKSPSerialIODebugToolThread_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        {
+            System.Diagnostics.Process.Start("http://forum.kerbalspaceprogram.com/index.php?/topic/139842-wiphardware-plugin-software-a-debugging-tool-for-kspserialio/");
+        }
+
+        private void linkLabelKSPSerialIOThread_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        {
+            System.Diagnostics.Process.Start("http://forum.kerbalspaceprogram.com/index.php?/topic/60281-hardware-plugin-arduino-based-physical-display-serial-port-io-tutorial-22-april/&page=1");
+        }
+
+        private void buttonStop_Click(object sender, EventArgs e)
+        {
+            //Stop U/D & H/S if needed
+            if (_autoUpdate)
+                buttonUpdate_Click(sender, e);
+
+            if (_autoHandshake)
+                buttonHandshake_Click(sender, e);
+
+            //Let any current communications finish before closing the port
+            while (true)
+            {
+                if (_updatingControls || KSPSerialPort.Handshaking)
+                    continue;
+
+                Stop();
+                break;
+            }
+        }
+
+        private void buttonUpdateOnce_Click(object sender, EventArgs e)
+        {
+            UpdateControls();
+        }
+
+        private void buttonHandshakeOnce_Click(object sender, EventArgs e)
+        {
+            KSPSerialPort.DoHandshake();
+        }
+
+        private void buttonShowAboutForm_Click(object sender, EventArgs e)
+        {
+            AboutForm aboutForm = new AboutForm();
+            aboutForm.ShowDialog();
+        }
+
+        private void checkBoxShowStatusMessages_Click(object sender, EventArgs e)
+        {
+            while (true)
+            {
+                if (checkBoxShowStatusMessages.Checked)
+                {
+                    if (MessageForm.IsDisposed)
+                    {
+                        MessageForm = new StatusMessagesForm();
+                        MessageForm.Show();
+                    }
+                    else
+                    {
+                        MessageForm.Close();
+                        continue;
+                    }
+                }
+                else
+                {
+                    if (!MessageForm.IsDisposed)
+                    {
+                        MessageForm.Close();
+                    }
+                }
+                break;
+            }
+        }
+
+
+        private void radioButtonNavballModeOrbit_CheckedChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void radioButtons_CheckedChanged(object sender, EventArgs e)
+        {
+            
+            if (radioButtonNone.Checked)
+            {
+                SASModeNumber = 0;
+            }
+            else if (radioButtonSAS.Checked)
+            {
+                SASModeNumber = 1;
+            }
+            else if (radioButtonPrograde.Checked)
+            {
+                SASModeNumber = 2;
+            }
+            else if (radioButtonRetrograde.Checked)
+            {
+                SASModeNumber = 3;
+            }
+            else if (radioButtonNormal.Checked)
+            {
+                SASModeNumber = 4;
+            }
+            else if (radioButtonAntiNormal.Checked)
+            {
+                SASModeNumber = 5;
+            }
+            else if (radioButtonRadialIn.Checked)
+            {
+                SASModeNumber = 6;
+            }
+            else if (radioButtonRadialOut.Checked)
+            {
+                SASModeNumber = 7;
+            }
+            else if (radioButtonTarget.Checked)
+            {
+                SASModeNumber = 8;
+            }
+            else if (radioButtonAntiTarget.Checked)
+            {
+                SASModeNumber = 9;
+            }
+            else if (radioButtonManeuverNode.Checked)
+            {
+                SASModeNumber = 10;
+            }
+            if (radioButtonNavballModeOrbit.Checked)
+            {
+                NavballModeNumber = 1;
+            }
+            else if (radioButtonNavballModeSurface.Checked)
+            {
+                NavballModeNumber = 2;
+            }
+            else if (radioButtonNavballModeTarget.Checked)
+            {
+                NavballModeNumber = 3;
+            }
+        }
+    }
 }
